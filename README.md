@@ -17,7 +17,8 @@ Multi-tenant RAG assistant: upload documents, ask questions, get streamed answer
 docker compose up -d postgres
 dotnet run --project src/DocsBrain.Api
 ```
-Health check: `GET /health`.
+Health check: `GET /health`. In Development, `POST /dev/token` with `{"tenantId":"11111111-1111-1111-1111-111111111111"}` (Acme) or `2222...` (Globex) returns a JWT for `/api/documents`.
 
 ## Architecture decisions
 - [ADR 0001: Modular monolith on PostgreSQL with pgvector](docs/adr/0001-modular-monolith-with-pgvector.md)
+- [ADR 0002: Tenant isolation](docs/adr/0002-tenant-isolation.md)
