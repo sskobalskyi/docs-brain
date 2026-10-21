@@ -1,0 +1,34 @@
+name: docs-brain
+
+# `docker compose up -d postgres ollama` starts the infrastructure; run the API from source for development.
+# The default LLM provider is `mock`; start Ollama with `docker compose --profile llm up -d`.
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg17
+    environment:
+      POSTGRES_USER: docsbrain
+      POSTGRES_PASSWORD: docsbrain
+      POSTGRES_DB: docsbrain
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docsbrain -d docsbrain"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ollama:
+    image: ollama/ollama:0.5.7
+    profiles: [llm]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  postgres-data:
+  ollama-data:

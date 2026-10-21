@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DocsBrain.Api/DocsBrain.Api.csproj" />
+    <Project Path="src/DocsBrain.Core/DocsBrain.Core.csproj" />
+    <Project Path="tests/DocsBrain.Tests/DocsBrain.Tests.csproj" />
+  </Folder>
+</Solution>
