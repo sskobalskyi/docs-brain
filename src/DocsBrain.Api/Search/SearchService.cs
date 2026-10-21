@@ -3,6 +3,7 @@ using DocsBrain.Api.Data;
 using DocsBrain.Core.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 using Pgvector;
 
 namespace DocsBrain.Api.Search;
@@ -11,6 +12,12 @@ public sealed record SearchHit(Guid DocumentId, string Title, int ChunkIndex, st
 
 public sealed record ScoredChunk(Guid Id, double Score);
 
+public sealed class SearchOptions
+{
+    /// <summary>Cosine similarity below which a chunk is not a vector match. Depends on the embedding model.</summary>
+    public double MinSimilarity { get; set; } = 0.45;
+}
+
 /// <summary>
 /// Hybrid search: vector similarity and full-text rankings are merged with Reciprocal Rank Fusion.
 /// If the embedding provider is unavailable the search degrades to keyword-only.
@@ -18,6 +25,7 @@ public sealed record ScoredChunk(Guid Id, double Score);
 public sealed class SearchService(
     DocsBrainDbContext db,
     ITenantContext tenant,
+    IOptions<SearchOptions> options,
     IEmbeddingGenerator<string, Embedding<float>> embeddings,
     ILogger<SearchService> logger)
 {
@@ -30,6 +38,7 @@ public sealed class SearchService(
         if (keywords.Length == 0) return [];
 
         var queryVector = await TryEmbedAsync(query, ct);
+        var minSimilarity = options.Value.MinSimilarity;
 
         // The tenant is passed explicitly because raw SQL bypasses the EF query filter.
         var scored = queryVector is null
@@ -44,6 +53,7 @@ public sealed class SearchService(
                     SELECT "Id", row_number() OVER (ORDER BY "Embedding" <=> {queryVector}) AS rnk
                     FROM "Chunks"
                     WHERE "TenantId" = {tenantId} AND "Embedding" IS NOT NULL
+                      AND 1 - ("Embedding" <=> {queryVector}) >= {minSimilarity}
                     ORDER BY "Embedding" <=> {queryVector} LIMIT {CandidatesPerRanking}),
                 kw AS (
                     SELECT c."Id", row_number() OVER (ORDER BY ts_rank_cd(c."SearchVector", q) DESC) AS rnk

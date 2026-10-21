@@ -1,7 +1,9 @@
 using DocsBrain.Api.Data;
 using DocsBrain.Api.Documents;
 using DocsBrain.Api.Tenancy;
+using System.Threading.RateLimiting;
 using DocsBrain.Api.Ai;
+using DocsBrain.Api.Chat;
 using DocsBrain.Api.Ingestion;
 using DocsBrain.Api.Search;
 using DocsBrain.Core.Ingestion;
@@ -9,6 +11,8 @@ using DocsBrain.Core.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -27,7 +31,23 @@ builder.Services.AddSingleton<ITextExtractor, PdfTextExtractor>();
 builder.Services.AddSingleton<ITextExtractor, DocxTextExtractor>();
 builder.Services.AddScoped<IngestionService>();
 builder.Services.AddScoped<SearchService>();
-builder.Services.AddEmbeddings(builder.Configuration);
+builder.Services.AddAiProviders(builder.Configuration);
+builder.Services.Configure<ChatOptions>(builder.Configuration.GetSection("Chat"));
+builder.Services.Configure<SearchOptions>(builder.Configuration.GetSection("Search"));
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<UsageStore>();
+builder.Services.AddScoped<ChatService>();
+
+// Chat is the only endpoint that spends LLM tokens, so it is limited per tenant.
+builder.Services.AddRateLimiter(o => o.RejectionStatusCode = StatusCodes.Status429TooManyRequests);
+builder.Services.AddOptions<RateLimiterOptions>().Configure<IOptions<ChatOptions>>((limiter, chat) =>
+    limiter.AddPolicy("chat", http => RateLimitPartition.GetFixedWindowLimiter(
+        http.User.FindFirst(HttpTenantContext.ClaimType)?.Value ?? "anonymous",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = chat.Value.RequestsPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+        })));
 builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = 10 * 1024 * 1024);
 
 builder.Services.AddDbContext<DocsBrainDbContext>(o =>
@@ -57,9 +77,11 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapHealthChecks("/health");
 app.MapDocumentEndpoints();
+app.MapChatEndpoints();
 app.MapGet("/api/search", async (string q, int? limit, SearchService search, CancellationToken ct) =>
         await search.SearchAsync(q, Math.Clamp(limit ?? 5, 1, 20), ct))
     .RequireAuthorization();

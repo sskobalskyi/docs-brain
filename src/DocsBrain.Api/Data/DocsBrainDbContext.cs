@@ -1,3 +1,4 @@
+using DocsBrain.Core.Chat;
 using DocsBrain.Core.Documents;
 using DocsBrain.Core.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ public sealed class DocsBrainDbContext(DbContextOptions<DocsBrainDbContext> opti
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<DocumentChunk> Chunks => Set<DocumentChunk>();
+    public DbSet<UsageRecord> Usage => Set<UsageRecord>();
 
     // Read at query time. A caller without a tenant matches nothing (fail closed).
     private Guid CurrentTenantId => tenant.TenantId ?? Guid.Empty;
@@ -36,6 +38,13 @@ public sealed class DocsBrainDbContext(DbContextOptions<DocsBrainDbContext> opti
             e.HasIndex(d => d.TenantId);
             e.Property(d => d.FileName).HasMaxLength(500);
             e.HasQueryFilter(d => d.TenantId == CurrentTenantId);
+        });
+
+        modelBuilder.Entity<UsageRecord>(e =>
+        {
+            e.HasKey(u => u.Id);
+            e.HasIndex(u => new { u.TenantId, u.Day }).IsUnique();
+            e.HasQueryFilter(u => u.TenantId == CurrentTenantId);
         });
 
         modelBuilder.Entity<DocumentChunk>(e =>
