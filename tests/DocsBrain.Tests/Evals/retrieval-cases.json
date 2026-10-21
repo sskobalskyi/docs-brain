@@ -1,0 +1,14 @@
+[
+  { "tenant": "acme", "question": "How many vacation days do I get per year?", "document": "employee-handbook", "fact": "25 paid vacation days" },
+  { "tenant": "acme", "question": "How many days can I work from home?", "document": "employee-handbook", "fact": "three days per week" },
+  { "tenant": "acme", "question": "When are business expenses reimbursed?", "document": "employee-handbook", "fact": "within 30 days" },
+  { "tenant": "acme", "question": "How long do I have to return a product for a refund?", "document": "refund-policy", "fact": "within 14 days of purchase" },
+  { "tenant": "acme", "question": "How long does standard shipping take?", "document": "refund-policy", "fact": "3 to 5 business days" },
+  { "tenant": "acme", "question": "How long is the warranty?", "document": "refund-policy", "fact": "two year warranty" },
+  { "tenant": "acme", "question": "Скільки днів відпустки мають працівники?", "document": "posibnyk-pratsivnyka", "fact": "25 оплачуваних днів" },
+  { "tenant": "globex", "question": "How long must a password be?", "document": "security-policy", "fact": "at least 14 characters" },
+  { "tenant": "globex", "question": "When must a security incident be reported?", "document": "security-policy", "fact": "within 24 hours" },
+  { "tenant": "globex", "question": "Is multi-factor authentication required?", "document": "security-policy", "fact": "Multi-factor authentication is mandatory" },
+  { "tenant": "globex", "question": "What is the sports allowance?", "document": "onboarding-guide", "fact": "40 euros per month" },
+  { "tenant": "globex", "question": "How long does the probation period last?", "document": "onboarding-guide", "fact": "three months" }
+]

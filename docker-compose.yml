@@ -1,8 +1,9 @@
 name: docs-brain
 
-# `docker compose up -d postgres` starts the database; run the API from source for development.
-# Local models: `docker compose --profile llm up -d` starts Ollama and pulls the embedding model.
-# Without Ollama set `Ai__Provider=mock` (offline hashing embeddings) or let ingestion fall back to keyword search.
+# `docker compose up --build` starts everything: web UI on http://localhost:8090, API on http://localhost:5090.
+# The first start pulls two Ollama models (about 2.5 GB). For an offline run without models use:
+#   COMPOSE_PROFILES= AI_PROVIDER=mock docker compose up --build
+# For development run only the database (`docker compose up -d postgres`) and start the API and web app from source.
 
 services:
   postgres:
@@ -43,8 +44,44 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["ollama", "pull", "nomic-embed-text"]
+    entrypoint: ["/bin/sh", "-c", "ollama pull nomic-embed-text && ollama pull llama3.2:3b"]
     restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/DocsBrain.Api/Dockerfile
+    environment:
+      # Development mode enables the demo sign-in (/dev/token) and schema creation.
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=docsbrain;Username=docsbrain;Password=docsbrain
+      Ai__Provider: ${AI_PROVIDER:-ollama}
+      Ai__OllamaUrl: http://ollama:11434
+      # The hashing mock embeddings have a different similarity scale than real models.
+      Search__MinSimilarity: ${SEARCH_MIN_SIMILARITY:-0.45}
+      Seed__Enabled: "true"
+    ports:
+      - "5090:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+        required: false
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080 && printf \"GET /health HTTP/1.0\r\n\r\n\" >&3 && grep -q 200 <&3'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  web:
+    build:
+      context: web
+    ports:
+      - "8090:80"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres-data:

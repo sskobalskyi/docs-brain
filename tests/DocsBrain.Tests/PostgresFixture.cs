@@ -36,6 +36,36 @@ public sealed class PostgresFixture : IAsyncLifetime
         new(new DbContextOptionsBuilder<DocsBrainDbContext>()
             .UseNpgsql(ConnectionString, o => o.UseVector()).Options, new FixedTenant(tenant));
 
+    /// <summary>Creates an empty database with the schema, so a test can run without data left by other tests.</summary>
+    public async Task<Func<Guid, DocsBrainDbContext>> CreateIsolatedDatabaseAsync()
+    {
+        var name = "db_" + Guid.NewGuid().ToString("N");
+        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+
+        await using (var admin = new NpgsqlConnection(ConnectionString))
+        {
+            await admin.OpenAsync();
+            await new NpgsqlCommand($"CREATE DATABASE {name}", admin).ExecuteNonQueryAsync();
+        }
+
+        builder.Database = name;
+        await using (var connection = new NpgsqlConnection(builder.ConnectionString))
+        {
+            await connection.OpenAsync();
+            await new NpgsqlCommand("CREATE EXTENSION vector", connection).ExecuteNonQueryAsync();
+        }
+
+        NpgsqlConnection.ClearAllPools();
+        var connectionString = builder.ConnectionString;
+        DocsBrainDbContext Create(Guid tenant) => new(
+            new DbContextOptionsBuilder<DocsBrainDbContext>().UseNpgsql(connectionString, o => o.UseVector()).Options,
+            new FixedTenant(tenant));
+
+        await using var db = Create(DocsBrainDbContext.AcmeTenantId);
+        await db.Database.EnsureCreatedAsync();
+        return Create;
+    }
+
     private sealed class FixedTenant(Guid id) : ITenantContext
     {
         public Guid? TenantId { get; } = id;

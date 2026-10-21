@@ -6,6 +6,7 @@ using DocsBrain.Api.Ai;
 using DocsBrain.Api.Chat;
 using DocsBrain.Api.Ingestion;
 using DocsBrain.Api.Search;
+using DocsBrain.Api.Seed;
 using DocsBrain.Core.Ingestion;
 using DocsBrain.Core.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -30,6 +31,7 @@ builder.Services.AddSingleton<ITextExtractor, PlainTextExtractor>();
 builder.Services.AddSingleton<ITextExtractor, PdfTextExtractor>();
 builder.Services.AddSingleton<ITextExtractor, DocxTextExtractor>();
 builder.Services.AddScoped<IngestionService>();
+builder.Services.AddSingleton<DemoSeeder>();
 builder.Services.AddScoped<SearchService>();
 builder.Services.AddAiProviders(builder.Configuration);
 builder.Services.Configure<ChatOptions>(builder.Configuration.GetSection("Chat"));
@@ -94,6 +96,9 @@ if (app.Environment.IsDevelopment())
 
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<DocsBrainDbContext>().Database.EnsureCreated();
+
+    if (app.Configuration.GetValue<bool>("Seed:Enabled"))
+        await app.Services.GetRequiredService<DemoSeeder>().SeedAsync(CancellationToken.None);
 }
 
 app.Run();
