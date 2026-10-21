@@ -25,9 +25,12 @@ Search: `GET /api/search?q=...`. Embeddings come from Ollama by default: `docker
 
 Chat: `POST /api/chat` with `{"question":"..."}` streams server-sent events (`sources`, `token`, `done`). Pull the chat model once with `docker exec docs-brain-ollama-1 ollama pull llama3.2:3b`. Budgets and limits are under `Chat` in `appsettings.json`.
 
+Web UI: `cd web && npm install && npm run dev` (http://localhost:5173, proxies to the API on port 5201). Tests: `npm test`, lint: `npm run lint`.
+
 ## Architecture decisions
 - [ADR 0001: Modular monolith on PostgreSQL with pgvector](docs/adr/0001-modular-monolith-with-pgvector.md)
 - [ADR 0002: Tenant isolation](docs/adr/0002-tenant-isolation.md)
 - [ADR 0003: Ingestion pipeline](docs/adr/0003-ingestion-pipeline.md)
 - [ADR 0004: Embeddings and hybrid search](docs/adr/0004-embeddings-and-hybrid-search.md)
 - [ADR 0005: Streamed chat and cost governance](docs/adr/0005-chat-streaming-and-cost-governance.md)
+- [ADR 0006: Web UI with shadcn/ui](docs/adr/0006-web-ui-shadcn.md)

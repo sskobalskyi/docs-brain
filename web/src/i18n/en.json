@@ -1,0 +1,37 @@
+{
+  "app": { "title": "Docs-Brain", "tagline": "Ask your documents" },
+  "tenant": "Workspace",
+  "language": "Language",
+  "documents": {
+    "title": "Documents",
+    "upload": "Upload a document",
+    "uploading": "Uploading…",
+    "hint": "PDF, DOCX, TXT or MD, up to 10 MB",
+    "empty": "No documents yet. Upload one to start asking questions.",
+    "loadFailed": "Could not load documents."
+  },
+  "chat": {
+    "title": "Chat",
+    "placeholder": "Ask a question about your documents",
+    "ask": "Ask",
+    "stop": "Stop",
+    "empty": "Ask something and the answer will cite its sources.",
+    "sources": "Sources",
+    "chunk": "passage {{n}}",
+    "thinking": "Searching your documents…"
+  },
+  "notice": {
+    "no_results": "Nothing relevant was found in your documents.",
+    "budget_exceeded": "The daily AI budget for this workspace is used up. Showing the most relevant passages instead of a generated answer.",
+    "llm_unavailable": "The language model is unavailable. Showing the most relevant passages instead of a generated answer.",
+    "retrieval_only": "Showing the most relevant passages instead of a generated answer."
+  },
+  "error": {
+    "rate_limited": "Too many questions. Wait a minute and try again.",
+    "unauthorized": "Your session has expired. Switch workspace to sign in again.",
+    "failed": "Something went wrong. Try again.",
+    "upload": "Upload failed: {{reason}}"
+  },
+  "tokens_one": "{{count}} token",
+  "tokens_other": "{{count}} tokens"
+}
