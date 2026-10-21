@@ -485,3 +485,6 @@ $RECYCLE.BIN/
 web/dist/
 web/test-results/
 web/playwright-report/
+
+# The compose defaults in .env hold no secrets and must be committed
+!/.env
