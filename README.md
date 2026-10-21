@@ -21,7 +21,10 @@ Health check: `GET /health`. In Development, `POST /dev/token` with `{"tenantId"
 
 Upload a PDF, DOCX, TXT or MD file: `POST /api/documents/upload` (multipart field `file`). Inspect the result with `GET /api/documents/{id}/chunks`.
 
+Search: `GET /api/search?q=...`. Embeddings come from Ollama by default: `docker compose --profile llm up -d` starts it and pulls `nomic-embed-text`. Set `Ai__Provider=mock` to run without models.
+
 ## Architecture decisions
 - [ADR 0001: Modular monolith on PostgreSQL with pgvector](docs/adr/0001-modular-monolith-with-pgvector.md)
 - [ADR 0002: Tenant isolation](docs/adr/0002-tenant-isolation.md)
 - [ADR 0003: Ingestion pipeline](docs/adr/0003-ingestion-pipeline.md)
+- [ADR 0004: Embeddings and hybrid search](docs/adr/0004-embeddings-and-hybrid-search.md)

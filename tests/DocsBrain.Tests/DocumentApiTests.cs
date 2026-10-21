@@ -21,6 +21,7 @@ public class DocumentApiTests : IClassFixture<DocumentApiTests.Factory>
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
+            builder.UseSetting("Ai:Provider", "mock");
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<DocsBrainDbContext>>();

@@ -2,10 +2,16 @@ using DocsBrain.Api.Data;
 using DocsBrain.Core;
 using DocsBrain.Core.Documents;
 using DocsBrain.Core.Ingestion;
+using Microsoft.Extensions.AI;
+using Pgvector;
 
 namespace DocsBrain.Api.Ingestion;
 
-public sealed class IngestionService(DocsBrainDbContext db, IEnumerable<ITextExtractor> extractors)
+public sealed class IngestionService(
+    DocsBrainDbContext db,
+    IEnumerable<ITextExtractor> extractors,
+    IEmbeddingGenerator<string, Embedding<float>> embeddings,
+    ILogger<IngestionService> logger)
 {
     public async Task<Result<Document>> IngestAsync(string fileName, Stream content, CancellationToken ct)
     {
@@ -30,8 +36,30 @@ public sealed class IngestionService(DocsBrainDbContext db, IEnumerable<ITextExt
 
         var document = new Document { Title = Path.GetFileNameWithoutExtension(fileName), FileName = Path.GetFileName(fileName) };
         db.Documents.Add(document);
-        db.Chunks.AddRange(chunks.Select((t, i) => new DocumentChunk { DocumentId = document.Id, Index = i, Text = t }));
+        var vectors = await TryEmbedAsync(chunks, ct);
+        db.Chunks.AddRange(chunks.Select((t, i) => new DocumentChunk
+        {
+            DocumentId = document.Id,
+            Index = i,
+            Text = t,
+            Embedding = vectors?[i],
+        }));
         await db.SaveChangesAsync(ct);
         return document;
+    }
+
+    // Embedding is best effort: without it the chunks are still found by keyword search.
+    private async Task<Vector[]?> TryEmbedAsync(IReadOnlyList<string> chunks, CancellationToken ct)
+    {
+        try
+        {
+            var result = await embeddings.GenerateAsync(chunks, cancellationToken: ct);
+            return result.Select(e => new Vector(e.Vector.ToArray())).ToArray();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Embedding provider unavailable, storing chunks without embeddings.");
+            return null;
+        }
     }
 }

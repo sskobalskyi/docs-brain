@@ -1,7 +1,9 @@
 using DocsBrain.Api.Data;
 using DocsBrain.Api.Documents;
 using DocsBrain.Api.Tenancy;
+using DocsBrain.Api.Ai;
 using DocsBrain.Api.Ingestion;
+using DocsBrain.Api.Search;
 using DocsBrain.Core.Ingestion;
 using DocsBrain.Core.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -24,11 +26,15 @@ builder.Services.AddSingleton<ITextExtractor, PlainTextExtractor>();
 builder.Services.AddSingleton<ITextExtractor, PdfTextExtractor>();
 builder.Services.AddSingleton<ITextExtractor, DocxTextExtractor>();
 builder.Services.AddScoped<IngestionService>();
+builder.Services.AddScoped<SearchService>();
+builder.Services.AddEmbeddings(builder.Configuration);
 builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = 10 * 1024 * 1024);
 
 builder.Services.AddDbContext<DocsBrainDbContext>(o =>
-    o.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")
-        ?? throw new InvalidOperationException("Missing ConnectionStrings:Postgres")));
+    o.UseNpgsql(
+        builder.Configuration.GetConnectionString("Postgres")
+            ?? throw new InvalidOperationException("Missing ConnectionStrings:Postgres"),
+        npgsql => npgsql.UseVector()));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o => o.TokenValidationParameters = new TokenValidationParameters
@@ -54,6 +60,9 @@ app.UseAuthorization();
 
 app.MapHealthChecks("/health");
 app.MapDocumentEndpoints();
+app.MapGet("/api/search", async (string q, int? limit, SearchService search, CancellationToken ct) =>
+        await search.SearchAsync(q, Math.Clamp(limit ?? 5, 1, 20), ct))
+    .RequireAuthorization();
 
 if (app.Environment.IsDevelopment())
 {

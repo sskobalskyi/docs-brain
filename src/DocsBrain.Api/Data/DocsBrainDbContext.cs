@@ -1,6 +1,7 @@
 using DocsBrain.Core.Documents;
 using DocsBrain.Core.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 
 namespace DocsBrain.Api.Data;
 
@@ -43,6 +44,20 @@ public sealed class DocsBrainDbContext(DbContextOptions<DocsBrainDbContext> opti
             e.HasIndex(c => new { c.DocumentId, c.Index }).IsUnique();
             e.HasOne<Document>().WithMany().HasForeignKey(c => c.DocumentId).OnDelete(DeleteBehavior.Cascade);
             e.HasQueryFilter(c => c.TenantId == CurrentTenantId);
+
+            if (Database.IsNpgsql())
+            {
+                e.Property(c => c.Embedding).HasColumnType("vector(768)");
+                e.HasIndex(c => c.Embedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
+                e.Property<NpgsqlTsVector>("SearchVector")
+                    .HasColumnType("tsvector")
+                    .HasComputedColumnSql("to_tsvector('simple', \"Text\")", stored: true);
+                e.HasIndex("SearchVector").HasMethod("GIN");
+            }
+            else
+            {
+                e.Ignore(c => c.Embedding);
+            }
         });
     }
 

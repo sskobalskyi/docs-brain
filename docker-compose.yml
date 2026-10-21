@@ -1,7 +1,8 @@
 name: docs-brain
 
-# `docker compose up -d postgres ollama` starts the infrastructure; run the API from source for development.
-# The default LLM provider is `mock`; start Ollama with `docker compose --profile llm up -d`.
+# `docker compose up -d postgres` starts the database; run the API from source for development.
+# Local models: `docker compose --profile llm up -d` starts Ollama and pulls the embedding model.
+# Without Ollama set `Ai__Provider=mock` (offline hashing embeddings) or let ingestion fall back to keyword search.
 
 services:
   postgres:
@@ -28,6 +29,22 @@ services:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  ollama-pull:
+    image: ollama/ollama:0.5.7
+    profiles: [llm]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "nomic-embed-text"]
+    restart: "no"
 
 volumes:
   postgres-data:
