@@ -50,6 +50,39 @@ public class DocumentApiTests : IClassFixture<DocumentApiTests.Factory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    private static MultipartFormDataContent FileContent(string name, string text) =>
+        new() { { new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(text)), "file", name } };
+
+    [Fact]
+    public async Task Uploaded_file_is_chunked_and_visible_only_to_its_tenant()
+    {
+        var acme = await ClientFor(DocsBrainDbContext.AcmeTenantId);
+        var globex = await ClientFor(DocsBrainDbContext.GlobexTenantId);
+        var text = string.Join("\n\n", Enumerable.Range(0, 30).Select(i => $"Section {i}: " + new string('a', 200)));
+
+        var response = await acme.PostAsync("/api/documents/upload", FileContent("handbook.txt", text));
+        var doc = await response.Content.ReadFromJsonAsync<DocumentResponse>();
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("handbook.txt", doc!.FileName);
+        var chunks = await acme.GetFromJsonAsync<List<string>>($"/api/documents/{doc.Id}/chunks");
+        Assert.True(chunks!.Count > 1);
+        Assert.Equal(HttpStatusCode.NotFound, (await globex.GetAsync($"/api/documents/{doc.Id}/chunks")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("malware.exe", "data", "ingestion.unsupported_type")]
+    [InlineData("empty.txt", "   ", "ingestion.empty")]
+    public async Task Invalid_uploads_are_rejected_with_a_problem_code(string name, string text, string code)
+    {
+        var acme = await ClientFor(DocsBrainDbContext.AcmeTenantId);
+
+        var response = await acme.PostAsync("/api/documents/upload", FileContent(name, text));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(code, await response.Content.ReadAsStringAsync());
+    }
+
     [Fact]
     public async Task A_tenant_cannot_read_another_tenants_document()
     {

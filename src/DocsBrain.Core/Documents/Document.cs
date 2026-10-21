@@ -7,5 +7,6 @@ public sealed class Document : ITenantOwned
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid TenantId { get; set; }
     public required string Title { get; set; }
+    public string? FileName { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

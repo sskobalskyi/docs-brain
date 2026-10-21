@@ -1,9 +1,12 @@
 using DocsBrain.Api.Data;
 using DocsBrain.Api.Documents;
 using DocsBrain.Api.Tenancy;
+using DocsBrain.Api.Ingestion;
+using DocsBrain.Core.Ingestion;
 using DocsBrain.Core.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -16,6 +19,12 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantContext, HttpTenantContext>();
+
+builder.Services.AddSingleton<ITextExtractor, PlainTextExtractor>();
+builder.Services.AddSingleton<ITextExtractor, PdfTextExtractor>();
+builder.Services.AddSingleton<ITextExtractor, DocxTextExtractor>();
+builder.Services.AddScoped<IngestionService>();
+builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = 10 * 1024 * 1024);
 
 builder.Services.AddDbContext<DocsBrainDbContext>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")

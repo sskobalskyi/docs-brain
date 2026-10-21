@@ -12,6 +12,7 @@ public sealed class DocsBrainDbContext(DbContextOptions<DocsBrainDbContext> opti
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentChunk> Chunks => Set<DocumentChunk>();
 
     // Read at query time. A caller without a tenant matches nothing (fail closed).
     private Guid CurrentTenantId => tenant.TenantId ?? Guid.Empty;
@@ -32,7 +33,16 @@ public sealed class DocsBrainDbContext(DbContextOptions<DocsBrainDbContext> opti
             e.HasKey(d => d.Id);
             e.Property(d => d.Title).HasMaxLength(500);
             e.HasIndex(d => d.TenantId);
+            e.Property(d => d.FileName).HasMaxLength(500);
             e.HasQueryFilter(d => d.TenantId == CurrentTenantId);
+        });
+
+        modelBuilder.Entity<DocumentChunk>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.HasIndex(c => new { c.DocumentId, c.Index }).IsUnique();
+            e.HasOne<Document>().WithMany().HasForeignKey(c => c.DocumentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(c => c.TenantId == CurrentTenantId);
         });
     }
 
