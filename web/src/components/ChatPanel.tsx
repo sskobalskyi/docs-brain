@@ -129,6 +129,7 @@ function TurnView({ turn }: { turn: Turn }) {
                 >
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">[{source.number}]</Badge>
+                    {source.shared && <Badge variant="secondary">{t('chat.shared')}</Badge>}
                     <strong className="break-words">{source.title}</strong>
                     <span className="text-xs text-muted-foreground">{t('chat.chunk', { n: source.chunkIndex + 1 })}</span>
                   </div>

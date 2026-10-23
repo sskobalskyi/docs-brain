@@ -1,6 +1,7 @@
 using DocsBrain.Api.Data;
 using DocsBrain.Api.Ingestion;
 using DocsBrain.Core.Documents;
+using DocsBrain.Core.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocsBrain.Api.Documents;
@@ -18,8 +19,10 @@ public static class DocumentEndpoints
     {
         var group = app.MapGroup("/api/documents").RequireAuthorization();
 
-        group.MapGet("/", async (DocsBrainDbContext db, CancellationToken ct) =>
+        // Only the tenant's own documents: the shared corpus is searched, not browsed.
+        group.MapGet("/", async (DocsBrainDbContext db, ITenantContext tenant, CancellationToken ct) =>
             await db.Documents
+                .Where(d => d.TenantId == tenant.TenantId)
                 .OrderByDescending(d => d.CreatedAt)
                 .Select(d => new DocumentResponse(d.Id, d.Title, d.FileName, d.CreatedAt))
                 .ToListAsync(ct));

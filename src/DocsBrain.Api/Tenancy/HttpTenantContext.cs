@@ -16,6 +16,14 @@ public sealed class HttpTenantContext(IHttpContextAccessor accessor) : ITenantCo
     /// </summary>
     public static Guid? Resolve(HttpContext http)
     {
+        var tenant = ResolveRaw(http);
+
+        // The shared corpus has its own owner; nobody may act as it through a token or a header.
+        return tenant == SharedTenant.Id ? null : tenant;
+    }
+
+    private static Guid? ResolveRaw(HttpContext http)
+    {
         var user = http.User;
         if (Guid.TryParse(user.FindFirst(ClaimType)?.Value, out var claimed)) return claimed;
 

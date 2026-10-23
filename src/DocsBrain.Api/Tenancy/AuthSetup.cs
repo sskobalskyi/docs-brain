@@ -28,6 +28,9 @@ public static class AuthSetup
     private const string External = "External";
     private const string Smart = "Smart";
 
+    /// <summary>Policy for endpoints that only a service holding <see cref="AuthOptions.ServiceRole"/> may call.</summary>
+    public const string SharedWriterPolicy = "SharedWriter";
+
     public static IServiceCollection AddDocsBrainAuth(this IServiceCollection services, IConfiguration configuration, JwtOptions devJwt)
     {
         services.Configure<AuthOptions>(configuration.GetSection("Auth"));
@@ -78,7 +81,11 @@ public static class AuthSetup
             .SetDefaultPolicy(new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .RequireAssertion(ctx => ctx.Resource is HttpContext http && HttpTenantContext.Resolve(http) is not null)
-                .Build());
+                .Build())
+            .AddPolicy(SharedWriterPolicy, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAssertion(ctx => ctx.Resource is HttpContext http
+                    && ctx.User.IsInRole(http.RequestServices.GetRequiredService<IOptions<AuthOptions>>().Value.ServiceRole)));
 
         return services;
     }

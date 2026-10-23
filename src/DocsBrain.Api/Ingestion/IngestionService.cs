@@ -13,7 +13,8 @@ public sealed class IngestionService(
     IEmbeddingGenerator<string, Embedding<float>> embeddings,
     ILogger<IngestionService> logger)
 {
-    public async Task<Result<Document>> IngestAsync(string fileName, Stream content, CancellationToken ct)
+    /// <param name="title">Overrides the title, which otherwise is the file name without its extension.</param>
+    public async Task<Result<Document>> IngestAsync(string fileName, Stream content, CancellationToken ct, string? title = null)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         var extractor = extractors.FirstOrDefault(e => e.Extensions.Contains(extension));
@@ -34,7 +35,7 @@ public sealed class IngestionService(
         if (chunks.Count == 0)
             return new Error("ingestion.empty", "The file contains no text.");
 
-        var document = new Document { Title = Path.GetFileNameWithoutExtension(fileName), FileName = Path.GetFileName(fileName) };
+        var document = new Document { Title = title ?? Path.GetFileNameWithoutExtension(fileName), FileName = Path.GetFileName(fileName) };
         db.Documents.Add(document);
         var vectors = await TryEmbedAsync(chunks, ct);
         db.Chunks.AddRange(chunks.Select((t, i) => new DocumentChunk

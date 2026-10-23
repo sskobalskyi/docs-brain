@@ -20,6 +20,9 @@ public sealed class DocsBrainDbContext(DbContextOptions<DocsBrainDbContext> opti
     // Read at query time. A caller without a tenant matches nothing (fail closed).
     private Guid CurrentTenantId => tenant.TenantId ?? Guid.Empty;
 
+    // Shared documents are readable by any caller that has a tenant, never by one without.
+    private Guid SharedTenantId => tenant.TenantId is null ? Guid.Empty : SharedTenant.Id;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Tenant>(e =>
@@ -37,7 +40,7 @@ public sealed class DocsBrainDbContext(DbContextOptions<DocsBrainDbContext> opti
             e.Property(d => d.Title).HasMaxLength(500);
             e.HasIndex(d => d.TenantId);
             e.Property(d => d.FileName).HasMaxLength(500);
-            e.HasQueryFilter(d => d.TenantId == CurrentTenantId);
+            e.HasQueryFilter(d => d.TenantId == CurrentTenantId || d.TenantId == SharedTenantId);
         });
 
         modelBuilder.Entity<UsageRecord>(e =>
@@ -52,7 +55,7 @@ public sealed class DocsBrainDbContext(DbContextOptions<DocsBrainDbContext> opti
             e.HasKey(c => c.Id);
             e.HasIndex(c => new { c.DocumentId, c.Index }).IsUnique();
             e.HasOne<Document>().WithMany().HasForeignKey(c => c.DocumentId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(c => c.TenantId == CurrentTenantId);
+            e.HasQueryFilter(c => c.TenantId == CurrentTenantId || c.TenantId == SharedTenantId);
 
             if (Database.IsNpgsql())
             {
