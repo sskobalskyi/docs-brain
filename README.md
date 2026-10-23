@@ -127,7 +127,7 @@ erDiagram
 | `GET /api/documents`, `GET /api/documents/{id}`, `GET /api/documents/{id}/chunks` | Documents of the caller's tenant |
 | `POST /api/documents/upload` | Multipart field `file`: PDF, DOCX, TXT or MD, up to 10 MB |
 | `GET /api/search?q=...&limit=5` | Hybrid search |
-| `POST /api/chat` | `{"question":"..."}`, streams `sources`, `token` and `done` events |
+| `POST /api/chat` | `{"question":"...","context":"..."}` (`context` optional, trusted facts from a calling service, at most 4000 characters). Streams `sources`, `token` and `done` events |
 | `GET /health` | Health check |
 
 Budgets and limits live under `Chat` in `appsettings.json`, models under `Ai`, the vector match threshold under `Search`.
@@ -150,3 +150,7 @@ Budgets and limits live under `Chat` in `appsettings.json`, models under `Ai`, t
 - [ADR 4: Embeddings and hybrid search](docs/adr/0004-embeddings-and-hybrid-search.md)
 - [ADR 5: Streamed chat and cost governance](docs/adr/0005-chat-streaming-and-cost-governance.md)
 - [ADR 6: Web UI with shadcn/ui](docs/adr/0006-web-ui-shadcn.md)
+- [ADR 7: Service calls and trusted context](docs/adr/0007-service-calls-and-trusted-context.md)
+
+## Calls from other services
+Another service can call the API with a token of an external OpenID Connect authority. Set `Auth__Authority` (and `Auth__Issuer` when it differs, `Auth__Audience`, `Auth__ServiceRole`). A caller with the service role names the tenant in the `X-Tenant-Id` header and may send `context` with the question. See [ADR 7](docs/adr/0007-service-calls-and-trusted-context.md).

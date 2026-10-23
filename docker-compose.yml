@@ -60,8 +60,13 @@ services:
       # The hashing mock embeddings have a different similarity scale than real models.
       Search__MinSimilarity: ${SEARCH_MIN_SIMILARITY:-0.45}
       Seed__Enabled: "true"
+      # Optional: accept service tokens of an external OpenID Connect authority (see ADR 7).
+      Auth__Authority: ${AUTH_AUTHORITY:-}
+      Auth__Issuer: ${AUTH_ISSUER:-}
     ports:
       - "5090:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
