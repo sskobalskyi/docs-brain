@@ -44,7 +44,7 @@ builder.Services.AddScoped<ChatService>();
 builder.Services.AddRateLimiter(o => o.RejectionStatusCode = StatusCodes.Status429TooManyRequests);
 builder.Services.AddOptions<RateLimiterOptions>().Configure<IOptions<ChatOptions>>((limiter, chat) =>
     limiter.AddPolicy("chat", http => RateLimitPartition.GetFixedWindowLimiter(
-        http.User.FindFirst(HttpTenantContext.ClaimType)?.Value ?? "anonymous",
+        HttpTenantContext.Resolve(http)?.ToString() ?? "anonymous",
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = chat.Value.RequestsPerMinute,
@@ -58,20 +58,7 @@ builder.Services.AddDbContext<DocsBrainDbContext>(o =>
             ?? throw new InvalidOperationException("Missing ConnectionStrings:Postgres"),
         npgsql => npgsql.UseVector()));
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o => o.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidIssuer = jwt.Issuer,
-        ValidateAudience = false,
-        IssuerSigningKey = JwtSetup.SigningKey(jwt),
-    });
-
-// Every authenticated caller must carry a tenant claim.
-builder.Services.AddAuthorizationBuilder()
-    .SetDefaultPolicy(new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .RequireClaim(HttpTenantContext.ClaimType)
-        .Build());
+builder.Services.AddDocsBrainAuth(builder.Configuration, jwt);
 
 var app = builder.Build();
 

@@ -26,7 +26,9 @@ public sealed partial class ExtractiveChatClient : IChatClient
     {
         var prompt = messages.LastOrDefault(m => m.Role == ChatRole.User)?.Text ?? "";
         var answer = BestSentence(prompt) is { } best
-            ? $"According to the documents: {best.Sentence} [{best.Source}]"
+            ? best.Source is { } number
+                ? $"According to the documents: {best.Sentence} [{number}]"
+                : $"Based on your situation: {best.Sentence}"
             : "I could not find this in the documents.";
 
         foreach (var word in answer.Split(' '))
@@ -43,16 +45,18 @@ public sealed partial class ExtractiveChatClient : IChatClient
         };
     }
 
-    private static (string Sentence, int Source)? BestSentence(string prompt)
+    /// <summary>The best matching sentence and its source number, or no number when it comes from the caller's context.</summary>
+    private static (string Sentence, int? Source)? BestSentence(string prompt)
     {
         var question = prompt[(prompt.LastIndexOf("Question:", StringComparison.Ordinal) + "Question:".Length)..];
         var wanted = Words(question);
 
-        (string Sentence, int Source)? best = null;
+        (string Sentence, int? Source)? best = null;
         var bestScore = 0;
-        foreach (Match source in Source().Matches(prompt))
+
+        void Consider(string block, int? source)
         {
-            foreach (var sentence in Sentences().Split(source.Groups[2].Value))
+            foreach (var sentence in Sentences().Split(block))
             {
                 var text = sentence.Trim();
                 if (text.Length == 0 || text.StartsWith('#')) continue;
@@ -61,10 +65,16 @@ public sealed partial class ExtractiveChatClient : IChatClient
                 if (score > bestScore)
                 {
                     bestScore = score;
-                    best = (text, int.Parse(source.Groups[1].Value));
+                    best = (text, source);
                 }
             }
         }
+
+        // Sources are considered first, so they win a tie against the context.
+        foreach (Match source in Source().Matches(prompt))
+            Consider(source.Groups[2].Value, int.Parse(source.Groups[1].Value));
+        if (Context().Match(prompt) is { Success: true } context)
+            Consider(context.Groups[1].Value, null);
 
         return best;
     }
@@ -80,6 +90,9 @@ public sealed partial class ExtractiveChatClient : IChatClient
 
     [GeneratedRegex(@"\[(\d+)\] [^:\n]*: (.*?)(?=\n\n\[\d+\] |\n\nQuestion:)", RegexOptions.Singleline)]
     private static partial Regex Source();
+
+    [GeneratedRegex(@"<context>\n(.*?)\n</context>", RegexOptions.Singleline)]
+    private static partial Regex Context();
 
     [GeneratedRegex(@"(?<=[.!?])\s+|\n+")]
     private static partial Regex Sentences();
