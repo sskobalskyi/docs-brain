@@ -4,6 +4,7 @@ export interface Source {
   title: string
   chunkIndex: number
   text: string
+  shared?: boolean
 }
 
 export type ChatMode = 'answer' | 'retrieval_only' | 'no_results'

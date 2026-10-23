@@ -8,7 +8,7 @@ using Pgvector;
 
 namespace DocsBrain.Api.Search;
 
-public sealed record SearchHit(Guid DocumentId, string Title, int ChunkIndex, string Text, double Score);
+public sealed record SearchHit(Guid DocumentId, string Title, int ChunkIndex, string Text, double Score, bool Shared = false);
 
 public sealed record ScoredChunk(Guid Id, double Score);
 
@@ -39,26 +39,27 @@ public sealed class SearchService(
 
         var queryVector = await TryEmbedAsync(query, ct);
         var minSimilarity = options.Value.MinSimilarity;
+        var sharedId = SharedTenant.Id;
 
         // The tenant is passed explicitly because raw SQL bypasses the EF query filter.
         var scored = queryVector is null
             ? await db.Database.SqlQuery<ScoredChunk>($"""
                 SELECT c."Id", ts_rank_cd(c."SearchVector", q)::float8 AS "Score"
                 FROM "Chunks" c, websearch_to_tsquery('simple', {keywords}) q
-                WHERE c."TenantId" = {tenantId} AND c."SearchVector" @@ q
+                WHERE c."TenantId" IN ({tenantId}, {sharedId}) AND c."SearchVector" @@ q
                 ORDER BY "Score" DESC LIMIT {limit}
                 """).ToListAsync(ct)
             : await db.Database.SqlQuery<ScoredChunk>($"""
                 WITH vec AS (
                     SELECT "Id", row_number() OVER (ORDER BY "Embedding" <=> {queryVector}) AS rnk
                     FROM "Chunks"
-                    WHERE "TenantId" = {tenantId} AND "Embedding" IS NOT NULL
+                    WHERE "TenantId" IN ({tenantId}, {sharedId}) AND "Embedding" IS NOT NULL
                       AND 1 - ("Embedding" <=> {queryVector}) >= {minSimilarity}
                     ORDER BY "Embedding" <=> {queryVector} LIMIT {CandidatesPerRanking}),
                 kw AS (
                     SELECT c."Id", row_number() OVER (ORDER BY ts_rank_cd(c."SearchVector", q) DESC) AS rnk
                     FROM "Chunks" c, websearch_to_tsquery('simple', {keywords}) q
-                    WHERE c."TenantId" = {tenantId} AND c."SearchVector" @@ q
+                    WHERE c."TenantId" IN ({tenantId}, {sharedId}) AND c."SearchVector" @@ q
                     ORDER BY ts_rank_cd(c."SearchVector", q) DESC LIMIT {CandidatesPerRanking})
                 SELECT COALESCE(vec."Id", kw."Id") AS "Id",
                        (COALESCE(1.0 / (60 + vec.rnk), 0) + COALESCE(1.0 / (60 + kw.rnk), 0))::float8 AS "Score"
@@ -82,7 +83,8 @@ public sealed class SearchService(
                 titles.GetValueOrDefault(chunks[s.Id].DocumentId, ""),
                 chunks[s.Id].Index,
                 chunks[s.Id].Text,
-                s.Score))
+                s.Score,
+                chunks[s.Id].TenantId == SharedTenant.Id))
             .ToList();
     }
 

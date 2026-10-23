@@ -18,6 +18,7 @@
     "empty": "Ask something and the answer will cite its sources.",
     "sources": "Sources",
     "chunk": "passage {{n}}",
+    "shared": "Shared",
     "thinking": "Searching your documents…"
   },
   "notice": {

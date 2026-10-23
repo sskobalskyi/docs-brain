@@ -31,6 +31,7 @@ builder.Services.AddSingleton<ITextExtractor, PlainTextExtractor>();
 builder.Services.AddSingleton<ITextExtractor, PdfTextExtractor>();
 builder.Services.AddSingleton<ITextExtractor, DocxTextExtractor>();
 builder.Services.AddScoped<IngestionService>();
+builder.Services.AddScoped<SharedCorpus>();
 builder.Services.AddSingleton<DemoSeeder>();
 builder.Services.AddScoped<SearchService>();
 builder.Services.AddAiProviders(builder.Configuration);
@@ -71,6 +72,7 @@ app.UseRateLimiter();
 app.MapHealthChecks("/health");
 app.MapDocumentEndpoints();
 app.MapChatEndpoints();
+app.MapSharedEndpoints();
 app.MapGet("/api/search", async (string q, int? limit, SearchService search, CancellationToken ct) =>
         await search.SearchAsync(q, Math.Clamp(limit ?? 5, 1, 20), ct))
     .RequireAuthorization();

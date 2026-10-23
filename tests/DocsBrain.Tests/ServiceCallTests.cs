@@ -22,43 +22,14 @@ namespace DocsBrain.Tests;
 [Collection("postgres")]
 public class ServiceCallTests(PostgresFixture postgres) : IDisposable
 {
-    private const string Issuer = "http://idp.test/realms/greenhaus";
-    private const string Audience = "docs-brain";
-    private const string ServiceRole = "docs-brain.assistant";
-
-    private readonly RsaSecurityKey _idpKey = new(RSA.Create(2048)) { KeyId = "test" };
-
+    private readonly TestIdp _idp = new();
     private WebApplicationFactory<Program>? _factory;
 
-    private WebApplicationFactory<Program> Factory => _factory ??= new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-    {
-        builder.UseEnvironment("Development");
-        builder.UseSetting("ConnectionStrings:Postgres", postgres.ConnectionString);
-        builder.UseSetting("Ai:Provider", "mock");
-        builder.UseSetting("Search:MinSimilarity", "0.2");
-        builder.UseSetting("Auth:Authority", Issuer);
-        builder.UseSetting("Auth:Audience", Audience);
-        // The authority is not reachable in tests: hand the scheme the signing key and skip metadata discovery.
-        builder.ConfigureServices(services => services.PostConfigure<JwtBearerOptions>("External", o =>
-        {
-            o.Configuration = new OpenIdConnectConfiguration { Issuer = Issuer };
-            o.TokenValidationParameters.IssuerSigningKey = _idpKey;
-        }));
-    });
+    private WebApplicationFactory<Program> Factory => _factory ??= _idp.CreateFactory(postgres);
 
     public void Dispose() => _factory?.Dispose();
 
-    private string ServiceToken(string[]? roles = null, string audience = Audience)
-    {
-        var realmAccess = JsonSerializer.Serialize(new { roles = roles ?? [ServiceRole] });
-        var token = new JwtSecurityToken(
-            issuer: Issuer,
-            audience: audience,
-            claims: [new Claim("sub", "greenhaus-assistant"), new Claim("realm_access", realmAccess, JsonClaimValueTypes.Json)],
-            expires: DateTime.UtcNow.AddMinutes(5),
-            signingCredentials: new SigningCredentials(_idpKey, SecurityAlgorithms.RsaSha256));
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
+    private string ServiceToken(string[]? roles = null, string audience = TestIdp.Audience) => _idp.Token(roles, audience);
 
     private HttpRequestMessage Ask(string token, Guid? tenant, string question, string? context)
     {
@@ -144,8 +115,8 @@ public class ServiceCallTests(PostgresFixture postgres) : IDisposable
     public async Task Token_signed_with_an_unknown_key_is_rejected()
     {
         var forged = new JwtSecurityToken(
-            Issuer, Audience,
-            [new Claim("realm_access", JsonSerializer.Serialize(new { roles = new[] { ServiceRole } }), JsonClaimValueTypes.Json)],
+            TestIdp.Issuer, TestIdp.Audience,
+            [new Claim("realm_access", JsonSerializer.Serialize(new { roles = new[] { TestIdp.ServiceRole } }), JsonClaimValueTypes.Json)],
             expires: DateTime.UtcNow.AddMinutes(5),
             signingCredentials: new SigningCredentials(new RsaSecurityKey(RSA.Create(2048)) { KeyId = "test" }, SecurityAlgorithms.RsaSha256));
 

@@ -151,6 +151,10 @@ Budgets and limits live under `Chat` in `appsettings.json`, models under `Ai`, t
 - [ADR 5: Streamed chat and cost governance](docs/adr/0005-chat-streaming-and-cost-governance.md)
 - [ADR 6: Web UI with shadcn/ui](docs/adr/0006-web-ui-shadcn.md)
 - [ADR 7: Service calls and trusted context](docs/adr/0007-service-calls-and-trusted-context.md)
+- [ADR 8: Shared corpus](docs/adr/0008-shared-corpus.md)
 
 ## Calls from other services
 Another service can call the API with a token of an external OpenID Connect authority. Set `Auth__Authority` (and `Auth__Issuer` when it differs, `Auth__Audience`, `Auth__ServiceRole`). A caller with the service role names the tenant in the `X-Tenant-Id` header and may send `context` with the question. See [ADR 7](docs/adr/0007-service-calls-and-trusted-context.md).
+
+### Shared corpus
+Knowledge that every tenant should be able to search (for example plant care texts) lives in a shared corpus, managed by a service with the service role: `PUT /api/shared/documents/{title}` (multipart `file`, replaces the previous version of that title), `GET /api/shared/documents`, `DELETE /api/shared/documents/{id}`. Tenants find these passages in search and chat (marked `shared`) but cannot write them. See [ADR 8](docs/adr/0008-shared-corpus.md).

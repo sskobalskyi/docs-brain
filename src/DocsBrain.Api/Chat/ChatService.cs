@@ -16,7 +16,7 @@ public sealed class ChatOptions
     public int MaxContextChars { get; set; } = 4000;
 }
 
-public sealed record ChatSource(int Number, Guid DocumentId, string Title, int ChunkIndex, string Text);
+public sealed record ChatSource(int Number, Guid DocumentId, string Title, int ChunkIndex, string Text, bool Shared);
 
 /// <summary>One server-sent event. <c>Type</c> is <c>sources</c>, <c>token</c> or <c>done</c>.</summary>
 public sealed record ChatEvent(
@@ -60,7 +60,7 @@ public sealed class ChatService(
             yield break;
         }
 
-        var sources = hits.Select((h, i) => new ChatSource(i + 1, h.DocumentId, h.Title, h.ChunkIndex, h.Text)).ToList();
+        var sources = hits.Select((h, i) => new ChatSource(i + 1, h.DocumentId, h.Title, h.ChunkIndex, h.Text, h.Shared)).ToList();
         if (sources.Count > 0) yield return new ChatEvent("sources", Sources: sources);
 
         // Retrieval-only fallback: the sources are already useful without a generated answer.
