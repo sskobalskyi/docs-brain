@@ -15,7 +15,7 @@ public sealed record ScoredChunk(Guid Id, double Score);
 public sealed class SearchOptions
 {
     /// <summary>Cosine similarity below which a chunk is not a vector match. Depends on the embedding model.</summary>
-    public double MinSimilarity { get; set; } = 0.45;
+    public double MinSimilarity { get; set; } = 0.5;
 }
 
 /// <summary>

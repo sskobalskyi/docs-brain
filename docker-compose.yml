@@ -58,7 +58,7 @@ services:
       Ai__Provider: ${AI_PROVIDER:-ollama}
       Ai__OllamaUrl: http://ollama:11434
       # The hashing mock embeddings have a different similarity scale than real models.
-      Search__MinSimilarity: ${SEARCH_MIN_SIMILARITY:-0.45}
+      Search__MinSimilarity: ${SEARCH_MIN_SIMILARITY:-0.5}
       Seed__Enabled: "true"
       # Optional: accept service tokens of an external OpenID Connect authority (see ADR 7).
       Auth__Authority: ${AUTH_AUTHORITY:-}

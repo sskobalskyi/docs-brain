@@ -158,3 +158,19 @@ Another service can call the API with a token of an external OpenID Connect auth
 
 ### Shared corpus
 Knowledge that every tenant should be able to search (for example plant care texts) lives in a shared corpus, managed by a service with the service role: `PUT /api/shared/documents/{title}` (multipart `file`, replaces the previous version of that title), `GET /api/shared/documents`, `DELETE /api/shared/documents/{id}`. Tenants find these passages in search and chat (marked `shared`) but cannot write them. See [ADR 8](docs/adr/0008-shared-corpus.md).
+
+## Real models (Ollama)
+`docker compose --profile llm up -d ollama ollama-pull` starts Ollama on port 11434 and pulls `nomic-embed-text` (embeddings) and `llama3.2:3b` (answers). Then run the API with `Ai__Provider=ollama`, `Ai__OllamaUrl=http://host.docker.internal:11434` (from a container) and `Search__MinSimilarity=0.5`. The mock provider needs `0.2` instead, because its similarity scale is different.
+
+What was measured with these models on the seed documents (cosine similarity of the question to the best chunk):
+
+| Pair | `nomic-embed-text` | `bge-m3` |
+| --- | --- | --- |
+| Question and its own document, same language | 0.61 to 0.85 (one 0.44) | 0.42 to 0.76 |
+| Off-topic question and any chunk | at most 0.47 | at most 0.36 |
+| Ukrainian question and an English text | 0.41 | 0.67 |
+| Ukrainian question and a Ukrainian text | 0.80 | 0.71 |
+
+- With `nomic-embed-text`, `Search:MinSimilarity` 0.5 keeps the relevant passages and drops off-topic ones. It works within one language and does **not** work across languages, so a Ukrainian question finds Ukrainian texts only. For a Ukrainian corpus write Ukrainian texts (a second document per topic).
+- `bge-m3` is multilingual, but it has 1024 dimensions (the schema is `vector(768)`, so switching needs a migration and re-embedding) and about 1.2 GB. A threshold around 0.4 would fit it.
+- `llama3.2:3b` follows the question's language and uses the `context` block and numbered sources, but its Ukrainian is rough (broken words, mixed languages). Naming the language explicitly in the prompt helps only a little. A larger model is the real fix; none was tried yet.
